@@ -1518,58 +1518,64 @@ async function loadData() {
     }
 }
 
-// Parse CSV using PapaParse for robust handling
+// Parse CSV - custom parser for specific format where fields are separated by ,""
 function parseCSV(text) {
-    // Remove trailing semicolons from each line
-    const cleanedText = text.split('\n').map(line => line.replace(/;+$/, '')).join('\n');
+    const lines = text.trim().split(/\r?\n/);
     
-    const result = Papa.parse(cleanedText, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (header) => header.replace(/"/g, '').trim(),
-        transform: (value) => value.replace(/"/g, '').trim()
-    });
+    // Parse header - format: "field1,""field2"",""field3""...";;;
+    let headerLine = lines[0].replace(/;+$/, '').trim();
+    // Remove leading/trailing quotes
+    if (headerLine.startsWith('"')) headerLine = headerLine.slice(1);
+    if (headerLine.endsWith('"')) headerLine = headerLine.slice(0, -1);
     
-    console.log('[v0] PapaParse result:', result.meta.fields);
-    console.log('[v0] Total rows parsed:', result.data.length);
+    // Split by ,"" and clean
+    const headers = headerLine.split(',""').map(h => h.replace(/"/g, '').trim());
     
-    if (result.errors.length > 0) {
-        console.log('[v0] Parse errors:', result.errors.slice(0, 5));
-    }
+    console.log('[v0] Headers:', headers);
+    console.log('[v0] Total lines:', lines.length);
     
-    // Convert to proper types
-    const cars = result.data.map((row, index) => {
-        const car = { id: index };
+    const numericFields = ['price', 'mileage', 'horsepower', 'car_age', 'engine_displacement', 'torque_kgm', 
+         'km_per_year', 'savings_amount', 'fuel_tank_volume', 'rpm_power', 'ratio_hp_displacement',
+         'latitude', 'longitude', 'back_legroom', 'front_legroom', 'height', 'length', 'width',
+         'vol_approx', 'num_options'];
+    const booleanFields = ['has_accidents', 'is_new', 'isCab', 'has_picture'];
+    
+    const cars = [];
+    for (let i = 1; i < lines.length; i++) {
+        let line = lines[i].replace(/;+$/, '').trim();
+        if (!line) continue;
         
-        // Numeric fields
-        const numericFields = ['price', 'mileage', 'horsepower', 'car_age', 'engine_displacement', 'torque_kgm', 
-             'km_per_year', 'savings_amount', 'fuel_tank_volume', 'rpm_power', 'ratio_hp_displacement',
-             'latitude', 'longitude', 'back_legroom', 'front_legroom', 'height', 'length', 'width',
-             'vol_approx', 'num_options', 'dealer_zip'];
+        // Remove outer quotes
+        if (line.startsWith('"')) line = line.slice(1);
+        if (line.endsWith('"')) line = line.slice(0, -1);
         
-        // Boolean fields
-        const booleanFields = ['has_accidents', 'is_new', 'isCab', 'has_picture'];
+        // Split by ,"" pattern
+        const values = line.split(',""').map(v => v.replace(/^"|"$/g, '').trim());
         
-        for (const [key, value] of Object.entries(row)) {
-            const cleanKey = key.replace(/"/g, '').trim();
-            if (cleanKey === 'weight') continue; // Skip weight as per user request
+        if (values.length !== headers.length) continue;
+        
+        const car = { id: i - 1 };
+        headers.forEach((header, idx) => {
+            if (header === 'weight') return;
             
-            if (numericFields.includes(cleanKey)) {
-                car[cleanKey] = parseFloat(value) || 0;
-            } else if (booleanFields.includes(cleanKey)) {
-                car[cleanKey] = String(value).toLowerCase() === 'true';
+            const value = values[idx] || '';
+            
+            if (numericFields.includes(header)) {
+                car[header] = parseFloat(value) || 0;
+            } else if (booleanFields.includes(header)) {
+                car[header] = value.toLowerCase() === 'true';
             } else {
-                car[cleanKey] = String(value || '').trim();
+                car[header] = value;
             }
-        }
+        });
         
-        return car;
-    }).filter(car => car.make_name && car.make_name.length > 0);
-    
-    console.log('[v0] Final cars count:', cars.length);
-    if (cars.length > 0) {
-        console.log('[v0] Sample car:', cars[0]);
+        if (car.make_name) {
+            cars.push(car);
+        }
     }
+    
+    console.log('[v0] Parsed cars:', cars.length);
+    if (cars.length > 0) console.log('[v0] Sample:', cars[0]);
     
     return cars;
 }
