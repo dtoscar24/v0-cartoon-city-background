@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Car Analytics Pro - Explorador de Base de Datos</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -1517,92 +1518,60 @@ async function loadData() {
     }
 }
 
-// Parse CSV - handles the specific format with escaped quotes
+// Parse CSV using PapaParse for robust handling
 function parseCSV(text) {
-    const lines = text.trim().split('\n');
+    // Remove trailing semicolons from each line
+    const cleanedText = text.split('\n').map(line => line.replace(/;+$/, '')).join('\n');
     
-    // Parse header line - remove outer quotes and clean up
-    let headerLine = lines[0].replace(/;+$/, ''); // Remove trailing semicolons
-    if (headerLine.startsWith('"') && headerLine.endsWith('"')) {
-        headerLine = headerLine.slice(1, -1);
+    const result = Papa.parse(cleanedText, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.replace(/"/g, '').trim(),
+        transform: (value) => value.replace(/"/g, '').trim()
+    });
+    
+    console.log('[v0] PapaParse result:', result.meta.fields);
+    console.log('[v0] Total rows parsed:', result.data.length);
+    
+    if (result.errors.length > 0) {
+        console.log('[v0] Parse errors:', result.errors.slice(0, 5));
     }
-    // Replace escaped quotes and split
-    const headers = headerLine.split(',').map(h => h.replace(/""/g, '').replace(/"/g, '').trim());
     
-    console.log('[v0] Headers found:', headers);
-    console.log('[v0] Total lines:', lines.length);
-    
-    const result = [];
-    for (let i = 1; i < lines.length; i++) {
-        let line = lines[i].replace(/;+$/, ''); // Remove trailing semicolons
-        if (!line.trim()) continue;
+    // Convert to proper types
+    const cars = result.data.map((row, index) => {
+        const car = { id: index };
         
-        // Remove outer quotes if present
-        if (line.startsWith('"') && line.endsWith('"')) {
-            line = line.slice(1, -1);
-        }
+        // Numeric fields
+        const numericFields = ['price', 'mileage', 'horsepower', 'car_age', 'engine_displacement', 'torque_kgm', 
+             'km_per_year', 'savings_amount', 'fuel_tank_volume', 'rpm_power', 'ratio_hp_displacement',
+             'latitude', 'longitude', 'back_legroom', 'front_legroom', 'height', 'length', 'width',
+             'vol_approx', 'num_options', 'dealer_zip'];
         
-        const values = parseCSVLine(line);
-        const obj = { id: i - 1 };
+        // Boolean fields
+        const booleanFields = ['has_accidents', 'is_new', 'isCab', 'has_picture'];
         
-        headers.forEach((header, idx) => {
-            let value = values[idx] || '';
-            // Clean up escaped quotes
-            value = value.replace(/""/g, '"').replace(/^"|"$/g, '').trim();
+        for (const [key, value] of Object.entries(row)) {
+            const cleanKey = key.replace(/"/g, '').trim();
+            if (cleanKey === 'weight') continue; // Skip weight as per user request
             
-            // Convert numeric fields
-            if (['price', 'mileage', 'horsepower', 'car_age', 'engine_displacement', 'torque_kgm', 
-                 'km_per_year', 'savings_amount', 'fuel_tank_volume', 'rpm_power', 'ratio_hp_displacement',
-                 'latitude', 'longitude', 'back_legroom', 'front_legroom', 'height', 'length', 'width',
-                 'vol_approx', 'num_options'].includes(header)) {
-                obj[header] = parseFloat(value) || 0;
-            } else if (['has_accidents', 'is_new', 'isCab', 'has_picture'].includes(header)) {
-                obj[header] = value.toLowerCase() === 'true';
+            if (numericFields.includes(cleanKey)) {
+                car[cleanKey] = parseFloat(value) || 0;
+            } else if (booleanFields.includes(cleanKey)) {
+                car[cleanKey] = String(value).toLowerCase() === 'true';
             } else {
-                obj[header] = value;
+                car[cleanKey] = String(value || '').trim();
             }
-        });
-        
-        if (obj.price > 0 || obj.make_name) {
-            result.push(obj);
         }
-    }
-    
-    console.log('[v0] Parsed cars:', result.length);
-    if (result.length > 0) {
-        console.log('[v0] Sample car:', result[0]);
-    }
-    
-    return result;
-}
-
-function parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    let i = 0;
-    
-    while (i < line.length) {
-        const char = line[i];
-        const nextChar = line[i + 1];
         
-        if (char === '"' && nextChar === '"') {
-            // Escaped quote - add single quote and skip both
-            current += '"';
-            i += 2;
-            continue;
-        } else if (char === '"') {
-            inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-            result.push(current);
-            current = '';
-        } else {
-            current += char;
-        }
-        i++;
+        return car;
+    }).filter(car => car.make_name && car.make_name.length > 0);
+    
+    console.log('[v0] Final cars count:', cars.length);
+    if (cars.length > 0) {
+        console.log('[v0] Sample car:', cars[0]);
     }
-    result.push(current);
-    return result;
+    
+    return cars;
 }
 
 // Navigation
