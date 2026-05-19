@@ -241,7 +241,7 @@
             z-index: 1;
             max-width: 860px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 100px 20px 40px;
         }
 
         h1 {
@@ -254,6 +254,67 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Navigation Bar */
+        .main-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 2px solid #3498db;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #2c3e50;
+        }
+
+        .nav-logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #666;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: rgba(52, 152, 219, 0.1);
+            color: #2c3e50;
+        }
+
+        .nav-link.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .content-wrapper {
+            padding-top: 80px;
         }
 
         .intro {
@@ -435,6 +496,21 @@
     </style>
 </head>
 <body>
+
+<!-- Navigation Bar -->
+<nav class="main-nav">
+    <div class="nav-logo">
+        <svg viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="#3498db"/>
+            <path d="M8 20h16M10 16h12M8 12h4m4 0h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>Car Analytics Pro</span>
+    </div>
+    <div class="nav-links">
+        <a href="index.html" class="nav-link active">Geoestadistica</a>
+        <a href="database.html" class="nav-link">Base de Datos</a>
+    </div>
+</nav>
 
 <!-- Fondo de ciudad cartoon -->
 <div class="city-background">

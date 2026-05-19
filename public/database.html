@@ -1,0 +1,2673 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Analytics Pro - Explorador de Base de Datos</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-card: #161616;
+            --bg-hover: #1a1a1a;
+            --border-color: #262626;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1a1;
+            --text-muted: #6b6b6b;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-orange: #f97316;
+            --accent-pink: #ec4899;
+            --accent-purple: #a855f7;
+            --accent-cyan: #06b6d4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .nav-logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-link.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        /* Main Layout */
+        .main {
+            padding-top: 60px;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            border-right: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            position: fixed;
+            top: 60px;
+            left: 0;
+            bottom: 0;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sidebar-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            width: 100%;
+        }
+
+        .sidebar-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .sidebar-btn.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .sidebar-btn svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Content Area */
+        .content {
+            margin-left: 280px;
+            flex: 1;
+            padding: 24px;
+            min-width: 0;
+        }
+
+        /* Section Container */
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .stat-change {
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+
+        .stat-change.positive { color: var(--accent-green); }
+        .stat-change.negative { color: var(--accent-orange); }
+
+        /* Filters */
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .filter-input, .filter-select {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .filter-input:focus, .filter-select:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .filter-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Range Slider */
+        .range-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .range-input {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            width: 80px;
+        }
+
+        .range-separator {
+            color: var(--text-muted);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+        }
+
+        .btn-icon {
+            padding: 8px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .data-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .data-table th:hover {
+            color: var(--text-primary);
+        }
+
+        .data-table th .sort-icon {
+            margin-left: 4px;
+            opacity: 0.5;
+        }
+
+        .data-table th.sorted .sort-icon {
+            opacity: 1;
+        }
+
+        .data-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .data-table tr:hover {
+            background: var(--bg-hover);
+        }
+
+        .data-table tr.selected {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Checkbox */
+        .checkbox {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            appearance: none;
+        }
+
+        .checkbox:checked {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .pagination-info {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .pagination-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        /* Comparator */
+        .compare-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .compare-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .compare-card.empty {
+            border-style: dashed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            color: var(--text-muted);
+        }
+
+        .compare-remove {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .compare-remove:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        .compare-header {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .compare-make {
+            font-size: 0.75rem;
+            color: var(--accent-blue);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .compare-model {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .compare-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-top: 8px;
+        }
+
+        .compare-specs {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .compare-spec {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .compare-spec-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .compare-spec-value {
+            font-weight: 600;
+        }
+
+        .compare-spec-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-secondary);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .compare-spec-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* AI Chat */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 140px);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chat-message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .chat-message.user {
+            align-self: flex-end;
+            background: var(--accent-blue);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-message.assistant {
+            align-self: flex-start;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-message.assistant .message-icon {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            outline: none;
+            resize: none;
+            min-height: 48px;
+            max-height: 150px;
+        }
+
+        .chat-input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .chat-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .chat-suggestion {
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chat-suggestion:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        /* Business Tools */
+        .tool-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .tool-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tool-icon.green { background: rgba(34, 197, 94, 0.1); color: var(--accent-green); }
+        .tool-icon.orange { background: rgba(249, 115, 22, 0.1); color: var(--accent-orange); }
+        .tool-icon.blue { background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
+        .tool-icon.purple { background: rgba(168, 85, 247, 0.1); color: var(--accent-purple); }
+
+        .tool-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .tool-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .tool-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .tool-result {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .tool-result-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .tool-result-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .tool-result-details {
+            margin-top: 12px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-green { background: rgba(34, 197, 94, 0.1); color: var(--accent-green); }
+        .badge-orange { background: rgba(249, 115, 22, 0.1); color: var(--accent-orange); }
+        .badge-blue { background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
+        .badge-red { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                display: none;
+            }
+            .content {
+                margin-left: 0;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Opportunities */
+        .opportunity-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .opportunity-score {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .opportunity-score.excellent { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+        .opportunity-score.good { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .opportunity-score.fair { background: rgba(249, 115, 22, 0.2); color: var(--accent-orange); }
+
+        .opportunity-details {
+            flex: 1;
+        }
+
+        .opportunity-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .opportunity-info {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .opportunity-price {
+            text-align: right;
+        }
+
+        .opportunity-current {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .opportunity-estimated {
+            font-size: 0.8rem;
+            color: var(--accent-green);
+        }
+
+        /* Score bar */
+        .score-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .score-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease-out;
+        }
+
+        .score-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 40px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav">
+    <div class="nav-logo">
+        <svg viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="#3b82f6"/>
+            <path d="M8 20h16M10 16h12M8 12h4m4 0h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>Car Analytics Pro</span>
+    </div>
+    <div class="nav-links">
+        <a href="index.html" class="nav-link">Geoestadistica</a>
+        <a href="database.html" class="nav-link active">Base de Datos</a>
+    </div>
+</nav>
+
+<div class="main">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-title">Explorador</div>
+            <nav class="sidebar-nav">
+                <button class="sidebar-btn active" data-section="overview">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                    Dashboard
+                </button>
+                <button class="sidebar-btn" data-section="search">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    Buscador
+                </button>
+                <button class="sidebar-btn" data-section="compare">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Comparador
+                </button>
+                <button class="sidebar-btn" data-section="statistics">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Estadisticas
+                </button>
+            </nav>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-title">Herramientas IA</div>
+            <nav class="sidebar-nav">
+                <button class="sidebar-btn" data-section="assistant">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    Asistente IA
+                </button>
+            </nav>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Herramientas Pro</div>
+            <nav class="sidebar-nav">
+                <button class="sidebar-btn" data-section="valuator">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Valorador de Precio
+                </button>
+                <button class="sidebar-btn" data-section="opportunities">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    Detector de Oportunidades
+                </button>
+                <button class="sidebar-btn" data-section="tco">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    Calculadora TCO
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="content">
+
+        <!-- Dashboard Section -->
+        <section id="overview" class="section active">
+            <div class="page-header">
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Vision general de la base de datos de coches de segunda mano</p>
+            </div>
+
+            <div class="stats-grid" id="statsGrid">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3 class="chart-title">Distribucion de Precios</h3>
+                    <div class="chart-container">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Top 10 Marcas</h3>
+                    <div class="chart-container">
+                        <canvas id="makesChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Tipo de Carroceria</h3>
+                    <div class="chart-container">
+                        <canvas id="bodyChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Precio vs Kilometraje</h3>
+                    <div class="chart-container">
+                        <canvas id="scatterChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section id="search" class="section">
+            <div class="page-header">
+                <h1 class="page-title">Buscador Avanzado</h1>
+                <p class="page-subtitle">Filtra y explora la base de datos de coches</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Filtros</h3>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" onclick="clearFilters()">Limpiar Filtros</button>
+                        <button class="btn btn-primary" onclick="applyFilters()">Aplicar Filtros</button>
+                    </div>
+                </div>
+
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label class="filter-label">Marca</label>
+                        <select class="filter-select" id="filterMake">
+                            <option value="">Todas las marcas</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Tipo de Carroceria</label>
+                        <select class="filter-select" id="filterBody">
+                            <option value="">Todos los tipos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Transmision</label>
+                        <select class="filter-select" id="filterTransmission">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Traccion</label>
+                        <select class="filter-select" id="filterWheelSystem">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Tipo Motor</label>
+                        <select class="filter-select" id="filterEngine">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Color</label>
+                        <select class="filter-select" id="filterColor">
+                            <option value="">Todos los colores</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Precio ($)</label>
+                        <div class="range-container">
+                            <input type="number" class="range-input" id="priceMin" placeholder="Min">
+                            <span class="range-separator">-</span>
+                            <input type="number" class="range-input" id="priceMax" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Kilometraje</label>
+                        <div class="range-container">
+                            <input type="number" class="range-input" id="mileageMin" placeholder="Min">
+                            <span class="range-separator">-</span>
+                            <input type="number" class="range-input" id="mileageMax" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Potencia (HP)</label>
+                        <div class="range-container">
+                            <input type="number" class="range-input" id="hpMin" placeholder="Min">
+                            <span class="range-separator">-</span>
+                            <input type="number" class="range-input" id="hpMax" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Antiguedad (anos)</label>
+                        <div class="range-container">
+                            <input type="number" class="range-input" id="ageMin" placeholder="Min">
+                            <span class="range-separator">-</span>
+                            <input type="number" class="range-input" id="ageMax" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Accidentes</label>
+                        <select class="filter-select" id="filterAccidents">
+                            <option value="">Todos</option>
+                            <option value="false">Sin accidentes</option>
+                            <option value="true">Con accidentes</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Busqueda Global</label>
+                        <input type="text" class="filter-input" id="globalSearch" placeholder="Buscar en todos los campos...">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Resultados <span id="resultCount">(0 coches)</span></h3>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" onclick="exportCSV()">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            Exportar CSV
+                        </button>
+                        <button class="btn btn-primary" onclick="addSelectedToCompare()">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            Comparar Seleccionados
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table" id="dataTable">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" class="checkbox" id="selectAll"></th>
+                                <th data-sort="make_name">Marca <span class="sort-icon">↕</span></th>
+                                <th data-sort="body_type">Tipo <span class="sort-icon">↕</span></th>
+                                <th data-sort="price">Precio <span class="sort-icon">↕</span></th>
+                                <th data-sort="mileage">Km <span class="sort-icon">↕</span></th>
+                                <th data-sort="horsepower">HP <span class="sort-icon">↕</span></th>
+                                <th data-sort="car_age">Edad <span class="sort-icon">↕</span></th>
+                                <th data-sort="transmission">Trans. <span class="sort-icon">↕</span></th>
+                                <th data-sort="has_accidents">Accid. <span class="sort-icon">↕</span></th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <div class="pagination-info">
+                        Mostrando <span id="showingFrom">0</span>-<span id="showingTo">0</span> de <span id="totalResults">0</span>
+                    </div>
+                    <div class="pagination-controls" id="paginationControls">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Compare Section -->
+        <section id="compare" class="section">
+            <div class="page-header">
+                <h1 class="page-title">Comparador de Coches</h1>
+                <p class="page-subtitle">Compara hasta 4 coches lado a lado</p>
+            </div>
+
+            <div class="compare-grid" id="compareGrid">
+                <div class="compare-card empty" onclick="goToSearch()">
+                    <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="opacity: 0.5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                    <p style="margin-top: 12px">Anadir coche desde el Buscador</p>
+                </div>
+            </div>
+
+            <div class="card" id="radarChartCard" style="margin-top: 24px; display: none;">
+                <h3 class="card-title">Comparativa Visual</h3>
+                <div class="chart-container">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Statistics Section -->
+        <section id="statistics" class="section">
+            <div class="page-header">
+                <h1 class="page-title">Estadisticas Dinamicas</h1>
+                <p class="page-subtitle">Analisis interactivo de los datos</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Configurar Visualizacion</h3>
+                </div>
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label class="filter-label">Eje X</label>
+                        <select class="filter-select" id="statXAxis">
+                            <option value="price">Precio</option>
+                            <option value="mileage">Kilometraje</option>
+                            <option value="horsepower">Potencia (HP)</option>
+                            <option value="car_age">Antiguedad</option>
+                            <option value="engine_displacement">Cilindrada</option>
+                            <option value="torque_kgm">Torque</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Eje Y</label>
+                        <select class="filter-select" id="statYAxis">
+                            <option value="mileage">Kilometraje</option>
+                            <option value="price" selected>Precio</option>
+                            <option value="horsepower">Potencia (HP)</option>
+                            <option value="car_age">Antiguedad</option>
+                            <option value="engine_displacement">Cilindrada</option>
+                            <option value="torque_kgm">Torque</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Agrupar por</label>
+                        <select class="filter-select" id="statGroupBy">
+                            <option value="">Sin agrupar</option>
+                            <option value="make_name">Marca</option>
+                            <option value="body_type">Tipo Carroceria</option>
+                            <option value="transmission">Transmision</option>
+                            <option value="engine_type">Tipo Motor</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="display: flex; align-items: flex-end;">
+                        <button class="btn btn-primary" onclick="updateCustomChart()">Actualizar Grafico</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card" style="grid-column: span 2;">
+                    <h3 class="chart-title">Grafico Personalizado</h3>
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="customScatter"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h3 class="card-title">Matriz de Correlaciones</h3>
+                <div id="correlationMatrix" style="overflow-x: auto; padding: 16px;">
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Assistant Section -->
+        <section id="assistant" class="section">
+            <div class="page-header">
+                <h1 class="page-title">Asistente IA</h1>
+                <p class="page-subtitle">Pregunta sobre los datos o pide recomendaciones</p>
+            </div>
+
+            <div class="card" style="padding: 0; overflow: hidden;">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-message assistant">
+                            <div class="message-icon">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                Car Analytics AI
+                            </div>
+                            Hola! Soy tu asistente de analisis de coches. Puedo ayudarte a:
+                            <ul style="margin-top: 8px; padding-left: 20px;">
+                                <li>Encontrar coches segun tus necesidades y presupuesto</li>
+                                <li>Analizar tendencias del mercado</li>
+                                <li>Comparar opciones y dar recomendaciones</li>
+                                <li>Responder preguntas sobre los datos</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <div class="chat-input-wrapper">
+                            <textarea class="chat-input" id="chatInput" placeholder="Escribe tu pregunta..." rows="1"></textarea>
+                            <button class="btn btn-primary" onclick="sendMessage()">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                            </button>
+                        </div>
+                        <div class="chat-suggestions">
+                            <button class="chat-suggestion" onclick="askQuestion('Cuales son los mejores coches por menos de 20000$?')">Coches &lt; $20,000</button>
+                            <button class="chat-suggestion" onclick="askQuestion('Que marcas tienen mejor relacion calidad-precio?')">Mejor calidad-precio</button>
+                            <button class="chat-suggestion" onclick="askQuestion('Cual es el precio promedio por marca?')">Precio por marca</button>
+                            <button class="chat-suggestion" onclick="askQuestion('Que coches tienen mas potencia por su precio?')">Mejor HP/precio</button>
+                            <button class="chat-suggestion" onclick="askQuestion('Coches familiares recomendados')">Coches familiares</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Price Valuator Section -->
+        <section id="valuator" class="section">
+            <div class="page-header">
+                <h1 class="page-title">Valorador de Precio</h1>
+                <p class="page-subtitle">Estima el valor de mercado de un coche basado en sus caracteristicas</p>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-header">
+                    <div class="tool-icon green">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="tool-title">Estimador de Valor de Mercado</h3>
+                        <p class="tool-subtitle">Introduce las caracteristicas del vehiculo para obtener una valoracion</p>
+                    </div>
+                </div>
+
+                <div class="tool-form">
+                    <div class="filter-group">
+                        <label class="filter-label">Marca</label>
+                        <select class="filter-select" id="valMake"></select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Tipo Carroceria</label>
+                        <select class="filter-select" id="valBody"></select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Kilometraje</label>
+                        <input type="number" class="filter-input" id="valMileage" placeholder="ej: 50000">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Antiguedad (anos)</label>
+                        <input type="number" class="filter-input" id="valAge" placeholder="ej: 5">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Potencia (HP)</label>
+                        <input type="number" class="filter-input" id="valHP" placeholder="ej: 200">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Transmision</label>
+                        <select class="filter-select" id="valTransmission"></select>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="estimatePrice()" style="width: 100%;">Calcular Valoracion</button>
+
+                <div class="tool-result" id="valuatorResult" style="margin-top: 20px; display: none;">
+                    <div class="tool-result-label">Valor Estimado de Mercado</div>
+                    <div class="tool-result-value" id="estimatedPrice">$0</div>
+                    <div class="tool-result-details" id="estimatedDetails"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Opportunities Section -->
+        <section id="opportunities" class="section">
+            <div class="page-header">
+                <h1 class="page-title">Detector de Oportunidades</h1>
+                <p class="page-subtitle">Encuentra coches con precios por debajo del valor de mercado</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Oportunidades Encontradas</div>
+                    <div class="stat-value" id="oppCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Ahorro Promedio</div>
+                    <div class="stat-value" id="avgSavings">$0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Mayor Descuento</div>
+                    <div class="stat-value" id="maxDiscount">0%</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Top Oportunidades</h3>
+                    <button class="btn btn-secondary" onclick="refreshOpportunities()">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Actualizar
+                    </button>
+                </div>
+                <div id="opportunitiesList" style="display: flex; flex-direction: column; gap: 12px;">
+                </div>
+            </div>
+        </section>
+
+        <!-- TCO Calculator Section -->
+        <section id="tco" class="section">
+            <div class="page-header">
+                <h1 class="page-title">Calculadora de Coste Total de Propiedad</h1>
+                <p class="page-subtitle">Calcula el coste real de poseer un vehiculo durante varios anos</p>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-header">
+                    <div class="tool-icon purple">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="tool-title">Calculadora TCO</h3>
+                        <p class="tool-subtitle">Incluye depreciacion, mantenimiento, seguro y combustible</p>
+                    </div>
+                </div>
+
+                <div class="tool-form">
+                    <div class="filter-group">
+                        <label class="filter-label">Precio del Vehiculo ($)</label>
+                        <input type="number" class="filter-input" id="tcoPrice" placeholder="ej: 25000">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Anos de Propiedad</label>
+                        <input type="number" class="filter-input" id="tcoYears" placeholder="ej: 5" value="5">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Km anuales</label>
+                        <input type="number" class="filter-input" id="tcoKmYear" placeholder="ej: 15000" value="15000">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Consumo (L/100km)</label>
+                        <input type="number" class="filter-input" id="tcoConsumption" placeholder="ej: 7" value="7" step="0.1">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Precio Combustible ($/L)</label>
+                        <input type="number" class="filter-input" id="tcoFuelPrice" placeholder="ej: 1.5" value="1.5" step="0.1">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Seguro Anual ($)</label>
+                        <input type="number" class="filter-input" id="tcoInsurance" placeholder="ej: 800" value="800">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="calculateTCO()" style="width: 100%;">Calcular TCO</button>
+
+                <div id="tcoResult" style="margin-top: 20px; display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                        <div class="tool-result">
+                            <div class="tool-result-label">Coste Total (TCO)</div>
+                            <div class="tool-result-value" id="tcoTotal">$0</div>
+                        </div>
+                        <div class="tool-result">
+                            <div class="tool-result-label">Coste Mensual</div>
+                            <div class="tool-result-value" id="tcoMonthly">$0</div>
+                        </div>
+                        <div class="tool-result">
+                            <div class="tool-result-label">Coste por Km</div>
+                            <div class="tool-result-value" id="tcoPerKm">$0</div>
+                        </div>
+                    </div>
+                    <div class="chart-card" style="margin-top: 20px;">
+                        <h3 class="chart-title">Desglose de Costes</h3>
+                        <div class="chart-container">
+                            <canvas id="tcoChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script>
+// Global State
+let carsData = [];
+let filteredData = [];
+let currentPage = 1;
+const pageSize = 25;
+let sortColumn = 'price';
+let sortDirection = 'asc';
+let selectedCars = new Set();
+let compareCars = [];
+let charts = {};
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadData();
+    initNavigation();
+    initFilters();
+    initTable();
+    renderDashboard();
+});
+
+// Load CSV Data
+async function loadData() {
+    try {
+            const response = await fetch('data/dades_feature_engineering.csv');
+        const text = await response.text();
+        carsData = parseCSV(text);
+        filteredData = [...carsData];
+        console.log(`Loaded ${carsData.length} cars`);
+    } catch (error) {
+        console.error('Error loading data:', error);
+    }
+}
+
+// Parse CSV - custom parser for specific format where fields are separated by ,""
+function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    
+    // Parse header - format: "field1,""field2"",""field3""...";;;
+    let headerLine = lines[0].replace(/;+$/, '').trim();
+    // Remove leading/trailing quotes
+    if (headerLine.startsWith('"')) headerLine = headerLine.slice(1);
+    if (headerLine.endsWith('"')) headerLine = headerLine.slice(0, -1);
+    
+    // Split by ,"" and clean
+    const headers = headerLine.split(',""').map(h => h.replace(/"/g, '').trim());
+    
+    console.log('[v0] Headers:', headers);
+    console.log('[v0] Total lines:', lines.length);
+    
+    const numericFields = ['price', 'mileage', 'horsepower', 'car_age', 'engine_displacement', 'torque_kgm', 
+         'km_per_year', 'savings_amount', 'fuel_tank_volume', 'rpm_power', 'ratio_hp_displacement',
+         'latitude', 'longitude', 'back_legroom', 'front_legroom', 'height', 'length', 'width',
+         'vol_approx', 'num_options'];
+    const booleanFields = ['has_accidents', 'is_new', 'isCab', 'has_picture'];
+    
+    const cars = [];
+    for (let i = 1; i < lines.length; i++) {
+        let line = lines[i].replace(/;+$/, '').trim();
+        if (!line) continue;
+        
+        // Remove outer quotes
+        if (line.startsWith('"')) line = line.slice(1);
+        if (line.endsWith('"')) line = line.slice(0, -1);
+        
+        // Split by ,"" pattern
+        const values = line.split(',""').map(v => v.replace(/^"|"$/g, '').trim());
+        
+        if (values.length !== headers.length) continue;
+        
+        const car = { id: i - 1 };
+        headers.forEach((header, idx) => {
+            if (header === 'weight') return;
+            
+            const value = values[idx] || '';
+            
+            if (numericFields.includes(header)) {
+                car[header] = parseFloat(value) || 0;
+            } else if (booleanFields.includes(header)) {
+                car[header] = value.toLowerCase() === 'true';
+            } else {
+                car[header] = value;
+            }
+        });
+        
+        if (car.make_name) {
+            cars.push(car);
+        }
+    }
+    
+    console.log('[v0] Parsed cars:', cars.length);
+    if (cars.length > 0) console.log('[v0] Sample:', cars[0]);
+    
+    return cars;
+}
+
+// Navigation
+function initNavigation() {
+    document.querySelectorAll('.sidebar-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const section = btn.dataset.section;
+            showSection(section);
+            
+            document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+}
+
+function showSection(sectionId) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(sectionId).classList.add('active');
+    
+    // Initialize section-specific content
+    if (sectionId === 'statistics') {
+        updateCustomChart();
+        renderCorrelationMatrix();
+    } else if (sectionId === 'opportunities') {
+        refreshOpportunities();
+    }
+}
+
+function goToSearch() {
+    showSection('search');
+    document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-section="search"]').classList.add('active');
+}
+
+// Filters
+function initFilters() {
+    const makes = [...new Set(carsData.map(c => c.make_name))].filter(Boolean).sort();
+    const bodies = [...new Set(carsData.map(c => c.body_type))].filter(Boolean).sort();
+    const transmissions = [...new Set(carsData.map(c => c.transmission))].filter(Boolean).sort();
+    const wheelSystems = [...new Set(carsData.map(c => c.wheel_system))].filter(Boolean).sort();
+    const engines = [...new Set(carsData.map(c => c.engine_type))].filter(Boolean).sort();
+    const colors = [...new Set(carsData.map(c => c.listing_color))].filter(Boolean).sort();
+
+    populateSelect('filterMake', makes);
+    populateSelect('filterBody', bodies);
+    populateSelect('filterTransmission', transmissions);
+    populateSelect('filterWheelSystem', wheelSystems);
+    populateSelect('filterEngine', engines);
+    populateSelect('filterColor', colors);
+    
+    // Valuator selects
+    populateSelect('valMake', makes);
+    populateSelect('valBody', bodies);
+    populateSelect('valTransmission', transmissions);
+}
+
+function populateSelect(id, options) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    
+    const currentValue = select.value;
+    const defaultOption = select.options[0]?.outerHTML || '<option value="">Todos</option>';
+    select.innerHTML = defaultOption;
+    
+    options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        select.appendChild(option);
+    });
+    
+    select.value = currentValue;
+}
+
+function applyFilters() {
+    const make = document.getElementById('filterMake').value;
+    const body = document.getElementById('filterBody').value;
+    const transmission = document.getElementById('filterTransmission').value;
+    const wheelSystem = document.getElementById('filterWheelSystem').value;
+    const engine = document.getElementById('filterEngine').value;
+    const color = document.getElementById('filterColor').value;
+    const accidents = document.getElementById('filterAccidents').value;
+    const globalSearch = document.getElementById('globalSearch').value.toLowerCase();
+    
+    const priceMin = parseFloat(document.getElementById('priceMin').value) || 0;
+    const priceMax = parseFloat(document.getElementById('priceMax').value) || Infinity;
+    const mileageMin = parseFloat(document.getElementById('mileageMin').value) || 0;
+    const mileageMax = parseFloat(document.getElementById('mileageMax').value) || Infinity;
+    const hpMin = parseFloat(document.getElementById('hpMin').value) || 0;
+    const hpMax = parseFloat(document.getElementById('hpMax').value) || Infinity;
+    const ageMin = parseFloat(document.getElementById('ageMin').value) || 0;
+    const ageMax = parseFloat(document.getElementById('ageMax').value) || Infinity;
+
+    filteredData = carsData.filter(car => {
+        if (make && car.make_name !== make) return false;
+        if (body && car.body_type !== body) return false;
+        if (transmission && car.transmission !== transmission) return false;
+        if (wheelSystem && car.wheel_system !== wheelSystem) return false;
+        if (engine && car.engine_type !== engine) return false;
+        if (color && car.listing_color !== color) return false;
+        if (accidents && String(car.has_accidents) !== accidents) return false;
+        
+        if (car.price < priceMin || car.price > priceMax) return false;
+        if (car.mileage < mileageMin || car.mileage > mileageMax) return false;
+        if (car.horsepower < hpMin || car.horsepower > hpMax) return false;
+        if (car.car_age < ageMin || car.car_age > ageMax) return false;
+        
+        if (globalSearch) {
+            const searchStr = Object.values(car).join(' ').toLowerCase();
+            if (!searchStr.includes(globalSearch)) return false;
+        }
+        
+        return true;
+    });
+
+    currentPage = 1;
+    renderTable();
+}
+
+function clearFilters() {
+    document.querySelectorAll('.filter-select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('.filter-input, .range-input').forEach(i => i.value = '');
+    filteredData = [...carsData];
+    currentPage = 1;
+    renderTable();
+}
+
+// Table
+function initTable() {
+    document.querySelectorAll('.data-table th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const column = th.dataset.sort;
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            sortData();
+            renderTable();
+        });
+    });
+
+    document.getElementById('selectAll').addEventListener('change', (e) => {
+        const checkboxes = document.querySelectorAll('#tableBody .checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = e.target.checked;
+            const id = parseInt(cb.dataset.id);
+            if (e.target.checked) {
+                selectedCars.add(id);
+            } else {
+                selectedCars.delete(id);
+            }
+        });
+    });
+
+    renderTable();
+}
+
+function sortData() {
+    filteredData.sort((a, b) => {
+        let aVal = a[sortColumn];
+        let bVal = b[sortColumn];
+        
+        if (typeof aVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+        
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+}
+
+function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    const pageData = filteredData.slice(start, end);
+
+    tbody.innerHTML = pageData.map(car => `
+        <tr class="${selectedCars.has(car.id) ? 'selected' : ''}">
+            <td><input type="checkbox" class="checkbox" data-id="${car.id}" ${selectedCars.has(car.id) ? 'checked' : ''} onchange="toggleSelect(${car.id})"></td>
+            <td><strong>${car.make_name || '-'}</strong></td>
+            <td>${car.body_type || '-'}</td>
+            <td><strong>$${car.price.toLocaleString()}</strong></td>
+            <td>${car.mileage.toLocaleString()} km</td>
+            <td>${car.horsepower || '-'} HP</td>
+            <td>${car.car_age || '-'} anos</td>
+            <td>${car.transmission || '-'}</td>
+            <td>${car.has_accidents ? '<span class="badge badge-red">Si</span>' : '<span class="badge badge-green">No</span>'}</td>
+            <td>
+                <button class="btn btn-secondary btn-icon" onclick="addToCompare(${car.id})" title="Comparar">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    // Update pagination
+    document.getElementById('resultCount').textContent = `(${filteredData.length} coches)`;
+    document.getElementById('showingFrom').textContent = filteredData.length ? start + 1 : 0;
+    document.getElementById('showingTo').textContent = Math.min(end, filteredData.length);
+    document.getElementById('totalResults').textContent = filteredData.length;
+
+    renderPagination();
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    const controls = document.getElementById('paginationControls');
+    
+    let html = `
+        <button class="pagination-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>«</button>
+        <button class="pagination-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>
+    `;
+    
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+    }
+    
+    html += `
+        <button class="pagination-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>›</button>
+        <button class="pagination-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>»</button>
+    `;
+    
+    controls.innerHTML = html;
+}
+
+function goToPage(page) {
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    renderTable();
+}
+
+function toggleSelect(id) {
+    if (selectedCars.has(id)) {
+        selectedCars.delete(id);
+    } else {
+        selectedCars.add(id);
+    }
+}
+
+// Compare
+function addToCompare(id) {
+    const car = carsData.find(c => c.id === id);
+    if (!car) return;
+    
+    if (compareCars.length >= 4) {
+        alert('Maximo 4 coches para comparar');
+        return;
+    }
+    
+    if (compareCars.find(c => c.id === id)) {
+        alert('Este coche ya esta en la comparacion');
+        return;
+    }
+    
+    compareCars.push(car);
+    renderCompare();
+    
+    showSection('compare');
+    document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-section="compare"]').classList.add('active');
+}
+
+function addSelectedToCompare() {
+    selectedCars.forEach(id => {
+        if (compareCars.length < 4 && !compareCars.find(c => c.id === id)) {
+            const car = carsData.find(c => c.id === id);
+            if (car) compareCars.push(car);
+        }
+    });
+    
+    if (compareCars.length > 0) {
+        renderCompare();
+        showSection('compare');
+        document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('[data-section="compare"]').classList.add('active');
+    }
+}
+
+function removeFromCompare(id) {
+    compareCars = compareCars.filter(c => c.id !== id);
+    renderCompare();
+}
+
+function renderCompare() {
+    const grid = document.getElementById('compareGrid');
+    const radarCard = document.getElementById('radarChartCard');
+    
+    // Calculate max values for percentage bars
+    const maxPrice = Math.max(...compareCars.map(c => c.price), 1);
+    const maxHP = Math.max(...compareCars.map(c => c.horsepower), 1);
+    const maxMileage = Math.max(...compareCars.map(c => c.mileage), 1);
+    
+    let html = compareCars.map(car => `
+        <div class="compare-card">
+            <button class="compare-remove" onclick="removeFromCompare(${car.id})">×</button>
+            <div class="compare-header">
+                <div class="compare-make">${car.make_name}</div>
+                <div class="compare-model">${car.body_type}</div>
+                <div class="compare-price">$${car.price.toLocaleString()}</div>
+            </div>
+            <div class="compare-specs">
+                <div class="compare-spec">
+                    <span class="compare-spec-label">Kilometraje</span>
+                    <span class="compare-spec-value">${car.mileage.toLocaleString()} km</span>
+                </div>
+                <div class="compare-spec-bar"><div class="compare-spec-fill" style="width: ${(car.mileage/maxMileage)*100}%; background: var(--accent-orange);"></div></div>
+                
+                <div class="compare-spec">
+                    <span class="compare-spec-label">Potencia</span>
+                    <span class="compare-spec-value">${car.horsepower} HP</span>
+                </div>
+                <div class="compare-spec-bar"><div class="compare-spec-fill" style="width: ${(car.horsepower/maxHP)*100}%; background: var(--accent-blue);"></div></div>
+                
+                <div class="compare-spec">
+                    <span class="compare-spec-label">Antiguedad</span>
+                    <span class="compare-spec-value">${car.car_age} anos</span>
+                </div>
+                
+                <div class="compare-spec">
+                    <span class="compare-spec-label">Transmision</span>
+                    <span class="compare-spec-value">${car.transmission}</span>
+                </div>
+                
+                <div class="compare-spec">
+                    <span class="compare-spec-label">Traccion</span>
+                    <span class="compare-spec-value">${car.wheel_system || '-'}</span>
+                </div>
+                
+                <div class="compare-spec">
+                    <span class="compare-spec-label">Motor</span>
+                    <span class="compare-spec-value">${car.engine_type || '-'}</span>
+                </div>
+                
+                <div class="compare-spec">
+                    <span class="compare-spec-label">Accidentes</span>
+                    <span class="compare-spec-value">${car.has_accidents ? '<span class="badge badge-red">Si</span>' : '<span class="badge badge-green">No</span>'}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Add empty slots
+    for (let i = compareCars.length; i < 4; i++) {
+        html += `
+            <div class="compare-card empty" onclick="goToSearch()">
+                <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="opacity: 0.5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                <p style="margin-top: 12px">Anadir coche</p>
+            </div>
+        `;
+    }
+    
+    grid.innerHTML = html;
+    
+    // Radar chart
+    if (compareCars.length >= 2) {
+        radarCard.style.display = 'block';
+        renderRadarChart();
+    } else {
+        radarCard.style.display = 'none';
+    }
+}
+
+function renderRadarChart() {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    
+    if (charts.radar) charts.radar.destroy();
+    
+    // Normalize values
+    const maxValues = {
+        price: Math.max(...carsData.map(c => c.price)),
+        horsepower: Math.max(...carsData.map(c => c.horsepower)),
+        mileage: Math.max(...carsData.map(c => c.mileage)),
+        car_age: Math.max(...carsData.map(c => c.car_age)),
+        torque: Math.max(...carsData.map(c => c.torque_kgm || 0))
+    };
+    
+    const colors = ['#3b82f6', '#22c55e', '#f97316', '#ec4899'];
+    
+    charts.radar = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['Precio (inv)', 'Potencia', 'Km (inv)', 'Edad (inv)', 'Torque'],
+            datasets: compareCars.map((car, i) => ({
+                label: `${car.make_name} - $${car.price.toLocaleString()}`,
+                data: [
+                    100 - (car.price / maxValues.price * 100),
+                    car.horsepower / maxValues.horsepower * 100,
+                    100 - (car.mileage / maxValues.mileage * 100),
+                    100 - (car.car_age / maxValues.car_age * 100),
+                    (car.torque_kgm || 0) / maxValues.torque * 100
+                ],
+                borderColor: colors[i],
+                backgroundColor: colors[i] + '20',
+                borderWidth: 2
+            }))
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { color: '#a1a1a1' },
+                    grid: { color: '#262626' },
+                    pointLabels: { color: '#fafafa' }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#fafafa' }
+                }
+            }
+        }
+    });
+}
+
+// Dashboard
+function renderDashboard() {
+    // Stats
+    const avgPrice = carsData.reduce((a, b) => a + b.price, 0) / carsData.length;
+    const avgMileage = carsData.reduce((a, b) => a + b.mileage, 0) / carsData.length;
+    const avgHP = carsData.reduce((a, b) => a + (b.horsepower || 0), 0) / carsData.length;
+    const avgAge = carsData.reduce((a, b) => a + (b.car_age || 0), 0) / carsData.length;
+
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card">
+            <div class="stat-label">Total Coches</div>
+            <div class="stat-value">${carsData.length.toLocaleString()}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Precio Promedio</div>
+            <div class="stat-value">$${Math.round(avgPrice).toLocaleString()}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Km Promedio</div>
+            <div class="stat-value">${Math.round(avgMileage).toLocaleString()}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">HP Promedio</div>
+            <div class="stat-value">${Math.round(avgHP)}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Edad Promedio</div>
+            <div class="stat-value">${avgAge.toFixed(1)} anos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Marcas Unicas</div>
+            <div class="stat-value">${new Set(carsData.map(c => c.make_name)).size}</div>
+        </div>
+    `;
+
+    renderPriceChart();
+    renderMakesChart();
+    renderBodyChart();
+    renderScatterChart();
+}
+
+function renderPriceChart() {
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    
+    // Create price distribution buckets
+    const buckets = {};
+    const bucketSize = 5000;
+    carsData.forEach(car => {
+        const bucket = Math.floor(car.price / bucketSize) * bucketSize;
+        buckets[bucket] = (buckets[bucket] || 0) + 1;
+    });
+    
+    const sortedBuckets = Object.entries(buckets).sort((a, b) => parseInt(a[0]) - parseInt(b[0])).slice(0, 20);
+    
+    if (charts.price) charts.price.destroy();
+    
+    charts.price = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: sortedBuckets.map(([k]) => `$${(parseInt(k)/1000)}k`),
+            datasets: [{
+                label: 'Cantidad',
+                data: sortedBuckets.map(([, v]) => v),
+                backgroundColor: '#3b82f6',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { ticks: { color: '#a1a1a1' }, grid: { color: '#262626' } },
+                y: { ticks: { color: '#a1a1a1' }, grid: { color: '#262626' } }
+            }
+        }
+    });
+}
+
+function renderMakesChart() {
+    const ctx = document.getElementById('makesChart').getContext('2d');
+    
+    const makes = {};
+    carsData.forEach(car => {
+        makes[car.make_name] = (makes[car.make_name] || 0) + 1;
+    });
+    
+    const topMakes = Object.entries(makes).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    
+    if (charts.makes) charts.makes.destroy();
+    
+    charts.makes = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: topMakes.map(([k]) => k),
+            datasets: [{
+                label: 'Cantidad',
+                data: topMakes.map(([, v]) => v),
+                backgroundColor: '#22c55e',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { ticks: { color: '#a1a1a1' }, grid: { color: '#262626' } },
+                y: { ticks: { color: '#a1a1a1' }, grid: { color: '#262626' } }
+            }
+        }
+    });
+}
+
+function renderBodyChart() {
+    const ctx = document.getElementById('bodyChart').getContext('2d');
+    
+    const bodies = {};
+    carsData.forEach(car => {
+        if (car.body_type) {
+            bodies[car.body_type] = (bodies[car.body_type] || 0) + 1;
+        }
+    });
+    
+    const sortedBodies = Object.entries(bodies).sort((a, b) => b[1] - a[1]);
+    
+    if (charts.body) charts.body.destroy();
+    
+    const colors = ['#3b82f6', '#22c55e', '#f97316', '#ec4899', '#a855f7', '#06b6d4', '#eab308', '#ef4444'];
+    
+    charts.body = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: sortedBodies.map(([k]) => k),
+            datasets: [{
+                data: sortedBodies.map(([, v]) => v),
+                backgroundColor: colors,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: '#fafafa', padding: 10 }
+                }
+            }
+        }
+    });
+}
+
+function renderScatterChart() {
+    const ctx = document.getElementById('scatterChart').getContext('2d');
+    
+    // Sample data for performance
+    const sample = carsData.filter(() => Math.random() < 0.3).slice(0, 500);
+    
+    if (charts.scatter) charts.scatter.destroy();
+    
+    charts.scatter = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Coches',
+                data: sample.map(car => ({ x: car.mileage, y: car.price })),
+                backgroundColor: '#3b82f640',
+                borderColor: '#3b82f6',
+                pointRadius: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { 
+                    title: { display: true, text: 'Kilometraje', color: '#a1a1a1' },
+                    ticks: { color: '#a1a1a1' }, 
+                    grid: { color: '#262626' }
+                },
+                y: { 
+                    title: { display: true, text: 'Precio ($)', color: '#a1a1a1' },
+                    ticks: { color: '#a1a1a1' }, 
+                    grid: { color: '#262626' }
+                }
+            }
+        }
+    });
+}
+
+// Statistics
+function updateCustomChart() {
+    const xAxis = document.getElementById('statXAxis').value;
+    const yAxis = document.getElementById('statYAxis').value;
+    const groupBy = document.getElementById('statGroupBy').value;
+    
+    const ctx = document.getElementById('customScatter').getContext('2d');
+    
+    if (charts.custom) charts.custom.destroy();
+    
+    const colors = ['#3b82f6', '#22c55e', '#f97316', '#ec4899', '#a855f7', '#06b6d4', '#eab308', '#ef4444', '#10b981', '#8b5cf6'];
+    
+    if (groupBy) {
+        const groups = {};
+        carsData.forEach(car => {
+            const group = car[groupBy] || 'Otro';
+            if (!groups[group]) groups[group] = [];
+            groups[group].push(car);
+        });
+        
+        const topGroups = Object.entries(groups).sort((a, b) => b[1].length - a[1].length).slice(0, 10);
+        
+        charts.custom = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: topGroups.map(([name, cars], i) => ({
+                    label: name,
+                    data: cars.filter(() => Math.random() < 0.5).slice(0, 200).map(car => ({ 
+                        x: car[xAxis] || 0, 
+                        y: car[yAxis] || 0 
+                    })),
+                    backgroundColor: colors[i] + '60',
+                    borderColor: colors[i],
+                    pointRadius: 4
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#fafafa' }
+                    }
+                },
+                scales: {
+                    x: { 
+                        title: { display: true, text: xAxis, color: '#a1a1a1' },
+                        ticks: { color: '#a1a1a1' }, 
+                        grid: { color: '#262626' }
+                    },
+                    y: { 
+                        title: { display: true, text: yAxis, color: '#a1a1a1' },
+                        ticks: { color: '#a1a1a1' }, 
+                        grid: { color: '#262626' }
+                    }
+                }
+            }
+        });
+    } else {
+        const sample = carsData.filter(() => Math.random() < 0.3).slice(0, 500);
+        
+        charts.custom = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Todos los coches',
+                    data: sample.map(car => ({ x: car[xAxis] || 0, y: car[yAxis] || 0 })),
+                    backgroundColor: '#3b82f640',
+                    borderColor: '#3b82f6',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { 
+                        title: { display: true, text: xAxis, color: '#a1a1a1' },
+                        ticks: { color: '#a1a1a1' }, 
+                        grid: { color: '#262626' }
+                    },
+                    y: { 
+                        title: { display: true, text: yAxis, color: '#a1a1a1' },
+                        ticks: { color: '#a1a1a1' }, 
+                        grid: { color: '#262626' }
+                    }
+                }
+            }
+        });
+    }
+}
+
+function renderCorrelationMatrix() {
+    const variables = ['price', 'mileage', 'horsepower', 'car_age', 'engine_displacement', 'torque_kgm'];
+    const labels = ['Precio', 'Km', 'HP', 'Edad', 'Cilindrada', 'Torque'];
+    
+    function correlation(x, y) {
+        const n = x.length;
+        const sumX = x.reduce((a, b) => a + b, 0);
+        const sumY = y.reduce((a, b) => a + b, 0);
+        const sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+        const sumX2 = x.reduce((a, b) => a + b * b, 0);
+        const sumY2 = y.reduce((a, b) => a + b * b, 0);
+        
+        const num = n * sumXY - sumX * sumY;
+        const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+        
+        return den === 0 ? 0 : num / den;
+    }
+    
+    const matrix = [];
+    for (let i = 0; i < variables.length; i++) {
+        matrix[i] = [];
+        for (let j = 0; j < variables.length; j++) {
+            const x = carsData.map(c => c[variables[i]] || 0);
+            const y = carsData.map(c => c[variables[j]] || 0);
+            matrix[i][j] = correlation(x, y);
+        }
+    }
+    
+    let html = '<table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">';
+    html += '<tr><th style="padding: 8px;"></th>';
+    labels.forEach(l => html += `<th style="padding: 8px; color: var(--text-secondary);">${l}</th>`);
+    html += '</tr>';
+    
+    for (let i = 0; i < labels.length; i++) {
+        html += `<tr><th style="padding: 8px; text-align: left; color: var(--text-secondary);">${labels[i]}</th>`;
+        for (let j = 0; j < labels.length; j++) {
+            const val = matrix[i][j];
+            const color = val > 0 ? `rgba(34, 197, 94, ${Math.abs(val)})` : `rgba(239, 68, 68, ${Math.abs(val)})`;
+            html += `<td style="padding: 8px; text-align: center; background: ${color}; border-radius: 4px;">${val.toFixed(2)}</td>`;
+        }
+        html += '</tr>';
+    }
+    html += '</table>';
+    
+    document.getElementById('correlationMatrix').innerHTML = html;
+}
+
+// AI Assistant
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+    
+    addChatMessage(message, 'user');
+    input.value = '';
+    
+    // Simulate AI response
+    setTimeout(() => {
+        const response = generateAIResponse(message);
+        addChatMessage(response, 'assistant');
+    }, 500);
+}
+
+function askQuestion(question) {
+    document.getElementById('chatInput').value = question;
+    sendMessage();
+}
+
+function addChatMessage(text, type) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = `chat-message ${type}`;
+    
+    if (type === 'assistant') {
+        div.innerHTML = `
+            <div class="message-icon">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                Car Analytics AI
+            </div>
+            ${text}
+        `;
+    } else {
+        div.textContent = text;
+    }
+    
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function generateAIResponse(question) {
+    const q = question.toLowerCase();
+    
+    if (q.includes('20000') || q.includes('20.000') || q.includes('barato')) {
+        const cheap = carsData.filter(c => c.price < 20000).sort((a, b) => b.horsepower - a.horsepower).slice(0, 5);
+        return `Encontre ${carsData.filter(c => c.price < 20000).length} coches por menos de $20,000. Los mejores por potencia son:
+        <ul style="margin-top: 8px;">
+            ${cheap.map(c => `<li><strong>${c.make_name}</strong> - $${c.price.toLocaleString()} - ${c.horsepower}HP - ${c.mileage.toLocaleString()}km</li>`).join('')}
+        </ul>`;
+    }
+    
+    if (q.includes('calidad') || q.includes('precio') || q.includes('valor')) {
+        const makes = {};
+        carsData.forEach(c => {
+            if (!makes[c.make_name]) makes[c.make_name] = { total: 0, hp: 0, price: 0, count: 0 };
+            makes[c.make_name].hp += c.horsepower || 0;
+            makes[c.make_name].price += c.price;
+            makes[c.make_name].count++;
+        });
+        
+        const ranked = Object.entries(makes)
+            .map(([name, data]) => ({
+                name,
+                ratio: (data.hp / data.count) / (data.price / data.count) * 1000
+            }))
+            .filter(m => m.ratio > 0)
+            .sort((a, b) => b.ratio - a.ratio)
+            .slice(0, 5);
+        
+        return `Las marcas con mejor relacion potencia/precio son:
+        <ol style="margin-top: 8px;">
+            ${ranked.map(m => `<li><strong>${m.name}</strong> - Score: ${m.ratio.toFixed(2)}</li>`).join('')}
+        </ol>
+        <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-secondary);">El score representa HP por cada $1000 invertidos.</p>`;
+    }
+    
+    if (q.includes('promedio') || q.includes('marca')) {
+        const makes = {};
+        carsData.forEach(c => {
+            if (!makes[c.make_name]) makes[c.make_name] = { total: 0, count: 0 };
+            makes[c.make_name].total += c.price;
+            makes[c.make_name].count++;
+        });
+        
+        const avgByMake = Object.entries(makes)
+            .map(([name, data]) => ({ name, avg: data.total / data.count }))
+            .sort((a, b) => b.avg - a.avg)
+            .slice(0, 10);
+        
+        return `Precio promedio por marca (Top 10):
+        <table style="margin-top: 8px; width: 100%;">
+            ${avgByMake.map(m => `<tr><td>${m.name}</td><td style="text-align: right;"><strong>$${Math.round(m.avg).toLocaleString()}</strong></td></tr>`).join('')}
+        </table>`;
+    }
+    
+    if (q.includes('potencia') || q.includes('hp')) {
+        const best = carsData.map(c => ({
+            ...c,
+            hpPerDollar: c.horsepower / c.price * 1000
+        })).sort((a, b) => b.hpPerDollar - a.hpPerDollar).slice(0, 5);
+        
+        return `Coches con mejor relacion HP/precio:
+        <ul style="margin-top: 8px;">
+            ${best.map(c => `<li><strong>${c.make_name}</strong> - ${c.horsepower}HP por $${c.price.toLocaleString()} (${c.hpPerDollar.toFixed(2)} HP/$1000)</li>`).join('')}
+        </ul>`;
+    }
+    
+    if (q.includes('familiar') || q.includes('familia') || q.includes('suv')) {
+        const family = carsData.filter(c => 
+            ['SUV / Crossover', 'Wagon', 'Minivan'].includes(c.body_type)
+        ).sort((a, b) => a.price - b.price).slice(0, 5);
+        
+        return `Coches familiares recomendados (SUV, Wagon, Minivan):
+        <ul style="margin-top: 8px;">
+            ${family.map(c => `<li><strong>${c.make_name}</strong> (${c.body_type}) - $${c.price.toLocaleString()} - ${c.mileage.toLocaleString()}km</li>`).join('')}
+        </ul>`;
+    }
+    
+    // Default response
+    const totalCars = carsData.length;
+    const avgPrice = Math.round(carsData.reduce((a, b) => a + b.price, 0) / totalCars);
+    
+    return `Tengo ${totalCars.toLocaleString()} coches en la base de datos con un precio promedio de $${avgPrice.toLocaleString()}. Puedo ayudarte a:
+    <ul style="margin-top: 8px;">
+        <li>Buscar coches por presupuesto (ej: "coches por menos de $20,000")</li>
+        <li>Analizar relacion calidad-precio</li>
+        <li>Ver precios promedio por marca</li>
+        <li>Encontrar coches con mejor HP/precio</li>
+        <li>Recomendar coches familiares</li>
+    </ul>`;
+}
+
+// Price Valuator
+function estimatePrice() {
+    const make = document.getElementById('valMake').value;
+    const body = document.getElementById('valBody').value;
+    const mileage = parseFloat(document.getElementById('valMileage').value) || 50000;
+    const age = parseFloat(document.getElementById('valAge').value) || 5;
+    const hp = parseFloat(document.getElementById('valHP').value) || 200;
+    const transmission = document.getElementById('valTransmission').value;
+    
+    // Find similar cars
+    let similar = carsData.filter(c => {
+        let match = true;
+        if (make && c.make_name !== make) match = false;
+        if (body && c.body_type !== body) match = false;
+        if (transmission && c.transmission !== transmission) match = false;
+        return match;
+    });
+    
+    if (similar.length < 10) {
+        similar = carsData.filter(c => c.make_name === make || c.body_type === body);
+    }
+    
+    if (similar.length < 5) {
+        similar = carsData;
+    }
+    
+    // Calculate weighted average based on similarity
+    let weightedSum = 0;
+    let weightSum = 0;
+    
+    similar.forEach(car => {
+        const mileageDiff = Math.abs(car.mileage - mileage) / 100000;
+        const ageDiff = Math.abs(car.car_age - age) / 10;
+        const hpDiff = Math.abs((car.horsepower || hp) - hp) / 200;
+        
+        const similarity = 1 / (1 + mileageDiff + ageDiff + hpDiff);
+        weightedSum += car.price * similarity;
+        weightSum += similarity;
+    });
+    
+    const estimatedPrice = Math.round(weightedSum / weightSum);
+    const minPrice = Math.round(estimatedPrice * 0.85);
+    const maxPrice = Math.round(estimatedPrice * 1.15);
+    
+    document.getElementById('estimatedPrice').textContent = `$${estimatedPrice.toLocaleString()}`;
+    document.getElementById('estimatedDetails').innerHTML = `
+        <p>Rango estimado: <strong>$${minPrice.toLocaleString()}</strong> - <strong>$${maxPrice.toLocaleString()}</strong></p>
+        <p style="margin-top: 8px;">Basado en ${similar.length} coches similares en la base de datos.</p>
+    `;
+    document.getElementById('valuatorResult').style.display = 'block';
+}
+
+// Opportunities
+function refreshOpportunities() {
+    // Calculate expected price for each car and find undervalued ones
+    const opportunities = carsData.map(car => {
+        // Simple model: expected price based on averages
+        const makeAvg = carsData.filter(c => c.make_name === car.make_name).reduce((a, b) => a + b.price, 0) / 
+                        carsData.filter(c => c.make_name === car.make_name).length;
+        
+        const ageAdjustment = (car.car_age || 0) * 2000; // $2000 per year
+        const mileageAdjustment = (car.mileage || 0) / 10; // $1 per 10km
+        
+        const expectedPrice = makeAvg - ageAdjustment - mileageAdjustment;
+        const savings = expectedPrice - car.price;
+        const discount = (savings / expectedPrice) * 100;
+        
+        return {
+            ...car,
+            expectedPrice: Math.max(expectedPrice, car.price * 0.5),
+            savings: Math.max(0, savings),
+            discount
+        };
+    }).filter(c => c.discount > 5).sort((a, b) => b.discount - a.discount).slice(0, 10);
+    
+    document.getElementById('oppCount').textContent = opportunities.length;
+    document.getElementById('avgSavings').textContent = `$${Math.round(opportunities.reduce((a, b) => a + b.savings, 0) / opportunities.length).toLocaleString()}`;
+    document.getElementById('maxDiscount').textContent = `${Math.round(opportunities[0]?.discount || 0)}%`;
+    
+    document.getElementById('opportunitiesList').innerHTML = opportunities.map(opp => `
+        <div class="opportunity-card">
+            <div class="opportunity-score ${opp.discount > 20 ? 'excellent' : opp.discount > 10 ? 'good' : 'fair'}">
+                ${Math.round(opp.discount)}%
+            </div>
+            <div class="opportunity-details">
+                <div class="opportunity-title">${opp.make_name} - ${opp.body_type}</div>
+                <div class="opportunity-info">${opp.mileage.toLocaleString()} km | ${opp.car_age} anos | ${opp.horsepower} HP</div>
+            </div>
+            <div class="opportunity-price">
+                <div class="opportunity-current">$${opp.price.toLocaleString()}</div>
+                <div class="opportunity-estimated">Est: $${Math.round(opp.expectedPrice).toLocaleString()}</div>
+            </div>
+            <button class="btn btn-secondary btn-icon" onclick="addToCompare(${opp.id})">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+            </button>
+        </div>
+    `).join('');
+}
+
+// TCO Calculator
+function calculateTCO() {
+    const price = parseFloat(document.getElementById('tcoPrice').value) || 25000;
+    const years = parseFloat(document.getElementById('tcoYears').value) || 5;
+    const kmYear = parseFloat(document.getElementById('tcoKmYear').value) || 15000;
+    const consumption = parseFloat(document.getElementById('tcoConsumption').value) || 7;
+    const fuelPrice = parseFloat(document.getElementById('tcoFuelPrice').value) || 1.5;
+    const insurance = parseFloat(document.getElementById('tcoInsurance').value) || 800;
+    
+    // Calculate costs
+    const depreciation = price * 0.15 * years; // 15% per year average
+    const fuel = (kmYear * years * consumption / 100) * fuelPrice;
+    const totalInsurance = insurance * years;
+    const maintenance = price * 0.03 * years; // 3% of price per year
+    const taxes = price * 0.02 * years; // 2% per year
+    
+    const total = depreciation + fuel + totalInsurance + maintenance + taxes;
+    const monthly = total / (years * 12);
+    const perKm = total / (kmYear * years);
+    
+    document.getElementById('tcoTotal').textContent = `$${Math.round(total).toLocaleString()}`;
+    document.getElementById('tcoMonthly').textContent = `$${Math.round(monthly).toLocaleString()}`;
+    document.getElementById('tcoPerKm').textContent = `$${perKm.toFixed(2)}`;
+    document.getElementById('tcoResult').style.display = 'block';
+    
+    // Chart
+    const ctx = document.getElementById('tcoChart').getContext('2d');
+    
+    if (charts.tco) charts.tco.destroy();
+    
+    charts.tco = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Depreciacion', 'Combustible', 'Seguro', 'Mantenimiento', 'Impuestos'],
+            datasets: [{
+                data: [depreciation, fuel, totalInsurance, maintenance, taxes],
+                backgroundColor: ['#3b82f6', '#22c55e', '#f97316', '#ec4899', '#a855f7'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: '#fafafa', padding: 15 }
+                }
+            }
+        }
+    });
+}
+
+// Export
+function exportCSV() {
+    const headers = ['Marca', 'Tipo', 'Precio', 'Km', 'HP', 'Edad', 'Transmision', 'Accidentes'];
+    const rows = filteredData.map(car => [
+        car.make_name,
+        car.body_type,
+        car.price,
+        car.mileage,
+        car.horsepower,
+        car.car_age,
+        car.transmission,
+        car.has_accidents ? 'Si' : 'No'
+    ]);
+    
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'coches_filtrados.csv';
+    a.click();
+}
+
+// Chat input auto-resize
+document.getElementById('chatInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+});
+
+document.getElementById('chatInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+</script>
+
+</body>
+</html>
